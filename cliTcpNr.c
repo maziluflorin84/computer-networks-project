@@ -27,6 +27,7 @@ int main (int argc, char *argv[])
   // mesajul trimis
   int nr=0;
   char buf[10];
+  char username[20];
 
   /* exista toate argumentele in linia de comanda? */
   if (argc != 3)
@@ -34,6 +35,10 @@ int main (int argc, char *argv[])
       printf ("Sintaxa: %s <adresa_server> <port>\n", argv[0]);
       return -1;
     }
+
+  /* Adaugarea unui pseudonim */
+  printf("Introduceti username-ul: ");
+  scanf("%s", username);  
 
   /* stabilim portul */
   port = atoi (argv[2]);
@@ -59,6 +64,24 @@ int main (int argc, char *argv[])
       perror ("[client]Eroare la connect().\n");
       return errno;
     }
+
+
+  /* trimiterea username-ului la server */
+  if (write (sd, username, sizeof(username)) <= 0)
+    {
+      perror ("[client]Eroare la write() spre server a username-ului.\n");
+      return errno;
+    }
+
+  /* citirea username-ului dat de server 
+     (apel blocant pina cind serverul raspunde) */
+  if (read (sd, username, sizeof(username)) < 0)
+    {
+      perror ("[client]Eroare la read() de la server a username-ului.\n");
+      return errno;
+    }
+  printf("Te-ai logat cu username-ul: %s\n", username);
+  
 
   /* citirea mesajului */
   printf ("[client]Introduceti un numar: ");

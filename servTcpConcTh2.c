@@ -27,6 +27,7 @@ extern int errno;
 typedef struct thData{
   int idThread; //id-ul thread-ului tinut in evidenta de acest program
   int cl; //descriptorul intors de accept
+  char username[20]; //username-ul tinut in evidenta de acest program
 }thData;
 
 /* functia executata de fiecare thread ce realizeaza comunicarea cu clientii */
@@ -43,7 +44,7 @@ int main ()
   int pid;
   pthread_t th[100];    //Identificatorii thread-urilor care se vor crea
   int i=0;
-
+  
   /* crearea unui socket */
   if ((sd = socket (AF_INET, SOCK_STREAM, 0)) == -1)
     {
@@ -79,6 +80,7 @@ int main ()
       perror ("[server]Eroare la listen().\n");
       return errno;
     }
+
   /* servim in mod concurent clientii...folosind thread-uri */
   while (1)
     {
@@ -98,15 +100,24 @@ int main ()
 	}
 	
       /* s-a realizat conexiunea, se astepta mesajul */
-    
       int idThread; //id-ul threadului
-      int cl; //descriptorul intors de accept
+      int cl; //descriptorul intors de accept      
+      char username[20]; //username-ul
+
+      /* Este citit username-ului*/
+      if (read (client, username, sizeof(username)) <= 0)
+	{
+	  perror ("Eroare la read() de la client a username-ului.\n");
+			
+	}
+    
 
       td=(struct thData*)malloc(sizeof(struct thData));	
       td->idThread=i++;
       td->cl=client;
+      strcpy(td->username, username);
 
-      pthread_create(&th[i], NULL, &treat, td);	      
+      pthread_create(&th[i], NULL, &treat, td);
 				
     }//while    
 };				
@@ -114,9 +125,18 @@ int main ()
 static void *treat(void * arg)
 {		
   struct thData tdL;
-  tdL= *((struct thData*)arg);	
-  printf ("[thread]- %d - Asteptam mesajul...\n", tdL.idThread);
-  fflush (stdout);		 
+  tdL= *((struct thData*)arg);
+
+  /* returnam username-ul clientului */
+  if (write (tdL.cl, tdL.username, sizeof(tdL.username)) <= 0)
+    {
+      printf("[Thread %d] ",tdL.idThread);
+      perror ("[Thread]Eroare la write() catre client a username-ului.\n");
+    }
+  
+  printf ("[thread]- %d - %s - Asteptam mesajul...\n", tdL.idThread, tdL.username);
+  fflush (stdout);
+  //sleep(5);
   pthread_detach(pthread_self());		
   raspunde((struct thData*)arg);
   /* am terminat cu acest client, inchidem conexiunea */
