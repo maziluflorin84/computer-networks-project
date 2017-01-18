@@ -1,12 +1,3 @@
-/* servTCPConcTh2.c - Exemplu de server TCP concurent care deserveste clientii
-   prin crearea unui thread pentru fiecare client.
-   Asteapta un numar de la clienti si intoarce clientilor numarul incrementat.
-   Intoarce corect identificatorul din program al thread-ului.
-  
-   
-   Autor: Lenuta Alboaie  <adria@infoiasi.ro> (c)2009
-*/
-
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -41,9 +32,12 @@ int main ()
   struct sockaddr_in from;	
   int nr;		//mesajul primit de trimis la client 
   int sd;		//descriptorul de socket 
-  int pid;
+  pid_t pid;            //pentru realizarea fork-ului
+  char rv[5];           //valoare returnata la finalizarea procesului copil
   pthread_t th[100];    //Identificatorii thread-urilor care se vor crea
   int i=0;
+  int timeBeforeStart=20;
+  int timeToAnswer=10;
   
   /* crearea unui socket */
   if ((sd = socket (AF_INET, SOCK_STREAM, 0)) == -1)
@@ -81,45 +75,64 @@ int main ()
       return errno;
     }
 
-  /* servim in mod concurent clientii...folosind thread-uri */
-  while (1)
+  switch(pid=fork())
     {
-      int client;
-      thData * td; //parametru functia executata de thread     
-      int length = sizeof (from);
+    case -1:
+      perror("fork");
+      exit(1);
+
+    case 0:
+      printf("Jocul va incepe in:\n");
+      while(timeBeforeStart>0)
+	{
+	  printf("\r%d secunde",timeBeforeStart);
+	  fflush(stdout);
+	  timeBeforeStart--;
+	  sleep(1);
+	}
+      printf("\n");
+
+    default:
+      /* servim in mod concurent clientii...folosind thread-uri */
+      while (1)
+	{
+	  int client;
+	  thData * td; //parametru functia executata de thread     
+	  int length = sizeof (from);
       
-      printf ("[server]Asteptam la portul %d...\n",PORT);
-      fflush (stdout);
+	  printf ("[server]Asteptam la portul %d...\n",PORT);
+	  fflush (stdout);
 
-      //client= malloc(sizeof(int));
-      /* acceptam un client (stare blocanta pina la realizarea conexiunii) */
-      if ( (client = accept (sd, (struct sockaddr *) &from, &length)) < 0)
-	{
-	  perror ("[server]Eroare la accept().\n");
-	  continue;
-	}
+	  //client= malloc(sizeof(int));
+	  /* acceptam un client (stare blocanta pina la realizarea conexiunii) */
+	  if ( (client = accept (sd, (struct sockaddr *) &from, &length)) < 0)
+	    {
+	      perror ("[server]Eroare la accept().\n");
+	      continue;
+	    }
 	
-      /* s-a realizat conexiunea, se astepta mesajul */
-      int idThread; //id-ul threadului
-      int cl; //descriptorul intors de accept      
-      char username[20]; //username-ul
+	  /* s-a realizat conexiunea, se astepta mesajul */
+	  int idThread; //id-ul threadului
+	  int cl; //descriptorul intors de accept      
+	  char username[20]; //username-ul
 
-      /* Este citit username-ului*/
-      if (read (client, username, sizeof(username)) <= 0)
-	{
-	  perror ("Eroare la read() de la client a username-ului.\n");
+	  /* Este citit username-ului*/
+	  if (read (client, username, sizeof(username)) <= 0)
+	    {
+	      perror ("Eroare la read() de la client a username-ului.\n");
 			
-	}
+	    }
     
 
-      td=(struct thData*)malloc(sizeof(struct thData));	
-      td->idThread=i++;
-      td->cl=client;
-      strcpy(td->username, username);
+	  td=(struct thData*)malloc(sizeof(struct thData));	
+	  td->idThread=i++;
+	  td->cl=client;
+	  strcpy(td->username, username);
 
-      pthread_create(&th[i], NULL, &treat, td);
+	  pthread_create(&th[i], NULL, &treat, td);
 				
-    }//while    
+	}//while
+    }
 };				
 
 static void *treat(void * arg)

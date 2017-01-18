@@ -1,8 +1,3 @@
-/* cliTCPIt.c - Exemplu de client TCP
-   Trimite un numar la server; primeste de la server numarul incrementat.
-         
-   Autor: Lenuta Alboaie  <adria@infoiasi.ro> (c)2009
-*/
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
