@@ -15,11 +15,16 @@
 /* codul de eroare returnat de anumite apeluri */
 extern int errno;
 
+int timeStart=20;
+
 typedef struct thData{
   int idThread; //id-ul thread-ului tinut in evidenta de acest program
   int cl; //descriptorul intors de accept
   char username[20]; //username-ul tinut in evidenta de acest program
 }thData;
+
+/* functia executata de thread-ul pentru countdown timer */
+void *countdown(void *);
 
 /* functia executata de fiecare thread ce realizeaza comunicarea cu clientii */
 static void *treat(void *);
@@ -31,13 +36,17 @@ int main ()
   struct sockaddr_in server;	// structura folosita de server
   struct sockaddr_in from;	
   int nr;		//mesajul primit de trimis la client 
-  int sd;		//descriptorul de socket 
-  pid_t pid;            //pentru realizarea fork-ului
+  int sd;		//descriptorul de socket
   char rv[5];           //valoare returnata la finalizarea procesului copil
-  pthread_t th[100];    //Identificatorii thread-urilor care se vor crea
+  pthread_t th[100];    //Identificatorii thread-urilor care se vor crea pentru clienti
+  pthread_t countdownThread;
   int i=0;
-  int timeBeforeStart=20;
-  int timeToAnswer=10;
+
+
+  /* Este creat thread-ul pentru countdown-ul de la inceperea quizz-ului*/
+  pthread_create(&countdownThread, NULL, countdown, NULL);
+  //pthread_join(countdownThread, NULL);
+  
   
   /* crearea unui socket */
   if ((sd = socket (AF_INET, SOCK_STREAM, 0)) == -1)
@@ -74,69 +83,81 @@ int main ()
       perror ("[server]Eroare la listen().\n");
       return errno;
     }
-
-  switch(pid=fork())
+  
+  /* servim in mod concurent clientii...folosind thread-uri */
+  while (1)
     {
-    case -1:
-      perror("fork");
-      exit(1);
-
-    case 0:
-      printf("Jocul va incepe in:\n");
-      while(timeBeforeStart>0)
-	{
-	  printf("\r%d secunde",timeBeforeStart);
-	  fflush(stdout);
-	  timeBeforeStart--;
-	  sleep(1);
-	}
-      printf("\n");
-
-    default:
-      /* servim in mod concurent clientii...folosind thread-uri */
-      while (1)
-	{
-	  int client;
-	  thData * td; //parametru functia executata de thread     
-	  int length = sizeof (from);
+      int client;
+      thData * td; //parametru functia executata de thread     
+      int length = sizeof (from);
       
-	  printf ("[server]Asteptam la portul %d...\n",PORT);
-	  fflush (stdout);
+      printf ("[server]Asteptam la portul %d...\n",PORT);
+      fflush (stdout);
+	  
+      //client= malloc(sizeof(int));
+      /* acceptam un client (stare blocanta pina la realizarea conexiunii) */
+      if ( (client = accept (sd, (struct sockaddr *) &from, &length)) < 0)
+	{
+	  perror ("[server]Eroare la accept().\n");
+	  continue;
+	}
 
-	  //client= malloc(sizeof(int));
-	  /* acceptam un client (stare blocanta pina la realizarea conexiunii) */
-	  if ( (client = accept (sd, (struct sockaddr *) &from, &length)) < 0)
-	    {
-	      perror ("[server]Eroare la accept().\n");
-	      continue;
-	    }
-	
-	  /* s-a realizat conexiunea, se astepta mesajul */
-	  int idThread; //id-ul threadului
-	  int cl; //descriptorul intors de accept      
-	  char username[20]; //username-ul
 
-	  /* Este citit username-ului*/
-	  if (read (client, username, sizeof(username)) <= 0)
-	    {
-	      perror ("Eroare la read() de la client a username-ului.\n");
-			
-	    }
-    
+      /* returnam valoarea countdown-ului la momentul conectarii clientului */
+      if (write (client, &timeStart, sizeof(timeStart)) <= 0)
+	{
+	  perror ("[Thread]Eroare la write() catre client a valorii countdown-ului.\n");
+	}
 
-	  td=(struct thData*)malloc(sizeof(struct thData));	
-	  td->idThread=i++;
-	  td->cl=client;
-	  strcpy(td->username, username);
+      
+	  	
+      /* s-a realizat conexiunea, se astepta mesajul */
+      int idThread; //id-ul threadului
+      int cl; //descriptorul intors de accept      
+      char username[20]; //username-ul	  
 
-	  pthread_create(&th[i], NULL, &treat, td);
+      /* Este citit username-ului*/
+      if (read (client, username, sizeof(username)) <= 0)
+	{
+	  perror ("Eroare la read() de la client a username-ului.\n");		
+	}
+
+      td=(struct thData*)malloc(sizeof(struct thData));	
+      td->idThread=i++;
+      td->cl=client;
+      strcpy(td->username, username);
+
+      pthread_create(&th[i], NULL, &treat, td);
 				
-	}//while
+    }//while
+      
+};
+
+void *countdown(void *arg)
+{
+  int time=20000000;
+  int checker=20;
+  while(time>=0)
+    {
+      timeStart=time;
+      //printf("%f\n",(double)time/1000000);
+      if(((double)time/1000000)==(time/1000000))
+	{
+	  if(time==0)
+	    printf("\r        JOCUL A INCEPUT!      ");
+	  else if(time>9000000)
+	    printf("\rJocul va incepe in: %d secunde",time/1000000);
+	  else
+	    printf("\rJocul va incepe in: 0%d secunde",time/1000000);
+	  fflush(stdout);
+	}
+      time=time-100000;
+      usleep(100000);
     }
-};				
+};
 
 static void *treat(void * arg)
-{		
+{	  
   struct thData tdL;
   tdL= *((struct thData*)arg);
 
@@ -149,7 +170,6 @@ static void *treat(void * arg)
   
   printf ("[thread]- %d - %s - Asteptam mesajul...\n", tdL.idThread, tdL.username);
   fflush (stdout);
-  //sleep(5);
   pthread_detach(pthread_self());		
   raspunde((struct thData*)arg);
   /* am terminat cu acest client, inchidem conexiunea */

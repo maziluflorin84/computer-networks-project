@@ -23,6 +23,7 @@ int main (int argc, char *argv[])
   int nr=0;
   char buf[10];
   char username[20];
+  int timeStart;
 
   /* exista toate argumentele in linia de comanda? */
   if (argc != 3)
@@ -60,6 +61,30 @@ int main (int argc, char *argv[])
       return errno;
     }
 
+  /* citirea pozitiei countdown-ului dat de server 
+     (apel blocant pina cind serverul raspunde) */
+  if (read (sd, &timeStart, sizeof(int)) < 0)
+    {
+      perror ("[client]Eroare la read() de la server a pozitiei countdown-ului.\n");
+      return errno;
+    }
+  int time=timeStart;
+  while(time>=0)
+    {
+      //printf("%f\n",(double)time/1000000);
+      if(((double)time/1000000)==(time/1000000))
+	{
+	  if(time==0)
+	    printf("\r        JOCUL A INCEPUT!      ");
+	  else if(time>9000000)
+	    printf("\rJocul va incepe in: %d secunde",time/1000000);
+	  else
+	    printf("\rJocul va incepe in: 0%d secunde",time/1000000);
+	  fflush(stdout);
+	}
+      time=time-100000;
+      usleep(100000);
+    }
 
   /* trimiterea username-ului la server */
   if (write (sd, username, sizeof(username)) <= 0)
