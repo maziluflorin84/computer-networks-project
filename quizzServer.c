@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <pthread.h>
+#include <sqlite3.h>
 
 /* portul folosit */
 #define PORT 2908
@@ -42,7 +43,10 @@ int main ()
   pthread_t th[100];    //Identificatorii thread-urilor care se vor crea pentru clienti
   pthread_t countdownThread;
   int i=0;
-
+  sqlite3 *db;
+  sqlite3_stmt *res;
+    
+  int rc = sqlite3_open("questions.db", &db);
 
   /* Este creat thread-ul pentru countdown-ul de la inceperea quizz-ului*/
   pthread_create(&countdownThread, NULL, countdown, NULL);
@@ -102,14 +106,23 @@ int main ()
 	  perror ("[server]Eroare la accept().\n");
 	  continue;
 	}
+
+
+
+      char username[20]; //username-ul
+      /* Este citit username-ul*/
+      if (read (client, username, sizeof(username)) <= 0)
+	{
+	  perror ("Eroare la read() de la client a username-ului.\n");		
+	}
+      
+      
 	  	
       /* s-a realizat conexiunea, se astepta mesajul */
       int idThread; //id-ul threadului
       int cl; //descriptorul intors de accept      
-      char username[20]; //username-ul
       int startTime; 
 
-      printf("\n%d\n",timeStart);
       td=(struct thData*)malloc(sizeof(struct thData));	
       td->idThread=i++;
       td->cl=client;
@@ -143,6 +156,7 @@ void *countdown(void *arg)
       time=time-100000;
       usleep(100000);
     }
+  printf("\n");
 };
 
 static void *treat(void * arg)
@@ -169,31 +183,19 @@ void raspunde(void *arg)
   struct thData tdL; 
   tdL= *((struct thData*)arg);
 
-  /* Este citit mesajul de confirmare
-  if (read (tdL.cl, message, sizeof(message)) <= 0)
-    {
-      perror ("Eroare la read() de la client a mesajului de confirmare.\n");		
-    }*/
-
   /* returnam pozitia countdown-ului clientului */
-  if (write (tdL.cl, &tdL.startTime, sizeof(tdL.startTime)) <= 0)
+  if (write (tdL.cl, &timeStart, sizeof(tdL.startTime)) <= 0)
     {
       printf("[Thread %d] ",tdL.idThread);
       perror ("[Thread]Eroare la write() catre client a pozitiei countdown-ului.\n");
     }
-  
-  /* Este citit username-ul*/
-  if (read (tdL.cl, tdL.username, sizeof(tdL.username)) <= 0)
-    {
-      perror ("Eroare la read() de la client a username-ului.\n");		
-    }
 
-  /* returnam username-ul clientului */
+  /* returnam username-ul clientului 
   if (write (tdL.cl, tdL.username, sizeof(tdL.username)) <= 0)
     {
       printf("[Thread %d] ",tdL.idThread);
       perror ("[Thread]Eroare la write() catre client a username-ului.\n");
-    }
+      }*/
   
   if (read (tdL.cl, &nr, sizeof(int)) <= 0)
     {

@@ -4,7 +4,7 @@ Indicatii
 - XML pentru stocarea intrebarilor, fiecare intrebare cu o subdiviziune ce retine variantele de raspuns
 
 
-- Trebuie sa folosesc SQLlite obligatoriu? Sau se poate si mysql?
+- Trebuie sa folosesc SQLite obligatoriu? Sau se poate si mysql?
 MySQL, dar SQLite ar fi mai recomandat, deoarece este mai usor de implementat
 Daca folosesc un makefile.sh, va fi ideal apelarea script-ului sql pentru generarea si popularea bazei de date
 
@@ -23,3 +23,12 @@ Pipe, fork, socket, tcp si thread
 
 - Documentatia de la tema 2?
 Nu e nevoie de documentatia de atunci, dar e nevoie de un manual de folosire, sau de un makefile
+
+
+
+open sqlite and create database : sqlite3 questions.db
+import sql script : .read questions.sql
+
+
+compilare server : gcc -o servTcpConcTh2 servTcpConcTh2.c -pthread -lsqlite3
+compilare client : gcc -pthread -o cliTcpNr cliTcpNr.c

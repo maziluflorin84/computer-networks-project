@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <netdb.h>
 #include <string.h>
-#include <pthread.h>
 
 /* codul de eroare returnat de anumite apeluri */
 extern int errno;
@@ -27,8 +26,7 @@ int main (int argc, char *argv[])
   char buf[10];
   char username[20];
   int startTime;
-  pthread_t startCountdownThread;
-
+  
   /* exista toate argumentele in linia de comanda? */
   if (argc != 3)
     {
@@ -54,6 +52,8 @@ int main (int argc, char *argv[])
   /* portul de conectare */
   server.sin_port = htons (port);
   
+
+
   /* ne conectam la server */
   if (connect (sd, (struct sockaddr *) &server,sizeof (struct sockaddr)) == -1)
     {
@@ -62,23 +62,20 @@ int main (int argc, char *argv[])
     }
 
 
-  /*char message[10];
-
-  printf("Type \"enter\" and press Enter to start quizz:");
-  scanf("%s",message);
-  while(strcmp(message,"enter")!=0)
-    {
-      printf("You didn't type correctly\nType \"enter\" and press Enter to start quizz:");
-      scanf("%s",message);
-      }*/
-
-  /* trimiterea confirmarii startului la server 
-  if (write (sd, message, sizeof(message)) <= 0)
-    {
-      perror ("[client]Eroare la write() spre server a confirmarii.\n");
-      return errno;
-      }  */
   
+  /* Adaugarea unui pseudonim */
+  printf("Introduceti username-ul: \n");
+  scanf("%s", username);
+  
+  /* trimiterea username-ului la server */
+  if (write (sd, username, sizeof(username)) <= 0)
+    {
+      perror ("[client]Eroare la write() spre server a username-ului.\n");
+      return errno;
+    }
+  printf("Te-ai logat cu username-ul: %s\n", username);
+
+
 
   /* citirea pozitiei countdown-ului dat de server 
      (apel blocant pina cind serverul raspunde) */
@@ -88,33 +85,8 @@ int main (int argc, char *argv[])
       return errno;
     }
 
-  /* Este creat thread-ul pentru countdown-ul de la inceperea quizz-ului*/
-  pthread_create(&startCountdownThread, NULL, countdown, &startTime);
-
-
-  /* Adaugarea unui pseudonim */
-  printf("Introduceti username-ul: ");
-  fflush (stdout);
-  scanf("%s", username);
-  
-  /* trimiterea username-ului la server */
-  if (write (sd, username, sizeof(username)) <= 0)
-    {
-      perror ("[client]Eroare la write() spre server a username-ului.\n");
-      return errno;
-    }
-
-  /* citirea username-ului dat de server 
-     (apel blocant pina cind serverul raspunde) */
-  if (read (sd, username, sizeof(username)) < 0)
-    {
-      perror ("[client]Eroare la read() de la server a username-ului.\n");
-      return errno;
-    }
-  printf("Te-ai logat cu username-ul: %s\n", username);
-
-
-
+  /* Este apelat countdown timer-ul*/
+  countdown(&startTime);
   
   
 
@@ -151,7 +123,6 @@ int main (int argc, char *argv[])
 void *countdown(void *arg)
 {
   int time=*((int *)arg);
-  printf("\n");
   while(time>=0)
     {
       //timeStart=time;
@@ -159,7 +130,7 @@ void *countdown(void *arg)
       if(((double)time/1000000)==(time/1000000))
 	{
 	  if(time==0)
-	    printf("\r        JOCUL A INCEPUT!      ");
+	    printf("\r        JOCUL A INCEPUT!        ");
 	  else if(time>9000000)
 	    printf("\rJocul va incepe in: %d secunde",time/1000000);
 	  else
@@ -169,4 +140,5 @@ void *countdown(void *arg)
       time=time-100000;
       usleep(100000);
     }
+  printf("\n");
 };
