@@ -21,6 +21,7 @@ typedef struct thData{
   int idThread; //id-ul thread-ului tinut in evidenta de acest program
   int cl; //descriptorul intors de accept
   char username[20]; //username-ul tinut in evidenta de acest program
+  int startTime;     //imtpul curent inainte de startul intrebarilor
 }thData;
 
 /* functia executata de thread-ul pentru countdown timer */
@@ -101,31 +102,19 @@ int main ()
 	  perror ("[server]Eroare la accept().\n");
 	  continue;
 	}
-
-
-      /* returnam valoarea countdown-ului la momentul conectarii clientului */
-      if (write (client, &timeStart, sizeof(timeStart)) <= 0)
-	{
-	  perror ("[Thread]Eroare la write() catre client a valorii countdown-ului.\n");
-	}
-
-      
 	  	
       /* s-a realizat conexiunea, se astepta mesajul */
       int idThread; //id-ul threadului
       int cl; //descriptorul intors de accept      
-      char username[20]; //username-ul	  
+      char username[20]; //username-ul
+      int startTime; 
 
-      /* Este citit username-ului*/
-      if (read (client, username, sizeof(username)) <= 0)
-	{
-	  perror ("Eroare la read() de la client a username-ului.\n");		
-	}
-
+      printf("\n%d\n",timeStart);
       td=(struct thData*)malloc(sizeof(struct thData));	
       td->idThread=i++;
       td->cl=client;
-      strcpy(td->username, username);
+      sprintf(td->username,"%s%d","user",i);
+      td->startTime=timeStart;
 
       pthread_create(&th[i], NULL, &treat, td);
 				
@@ -160,13 +149,6 @@ static void *treat(void * arg)
 {	  
   struct thData tdL;
   tdL= *((struct thData*)arg);
-
-  /* returnam username-ul clientului */
-  if (write (tdL.cl, tdL.username, sizeof(tdL.username)) <= 0)
-    {
-      printf("[Thread %d] ",tdL.idThread);
-      perror ("[Thread]Eroare la write() catre client a username-ului.\n");
-    }
   
   printf ("[thread]- %d - %s - Asteptam mesajul...\n", tdL.idThread, tdL.username);
   fflush (stdout);
@@ -182,9 +164,38 @@ static void *treat(void * arg)
 void raspunde(void *arg)
 {
   int nr, i=0;
+  char username[20];
+  char message[10];
   struct thData tdL; 
   tdL= *((struct thData*)arg);
-  if (read (tdL.cl, &nr,sizeof(int)) <= 0)
+
+  /* Este citit mesajul de confirmare
+  if (read (tdL.cl, message, sizeof(message)) <= 0)
+    {
+      perror ("Eroare la read() de la client a mesajului de confirmare.\n");		
+    }*/
+
+  /* returnam pozitia countdown-ului clientului */
+  if (write (tdL.cl, &tdL.startTime, sizeof(tdL.startTime)) <= 0)
+    {
+      printf("[Thread %d] ",tdL.idThread);
+      perror ("[Thread]Eroare la write() catre client a pozitiei countdown-ului.\n");
+    }
+  
+  /* Este citit username-ul*/
+  if (read (tdL.cl, tdL.username, sizeof(tdL.username)) <= 0)
+    {
+      perror ("Eroare la read() de la client a username-ului.\n");		
+    }
+
+  /* returnam username-ul clientului */
+  if (write (tdL.cl, tdL.username, sizeof(tdL.username)) <= 0)
+    {
+      printf("[Thread %d] ",tdL.idThread);
+      perror ("[Thread]Eroare la write() catre client a username-ului.\n");
+    }
+  
+  if (read (tdL.cl, &nr, sizeof(int)) <= 0)
     {
       printf("[Thread %d]\n",tdL.idThread);
       perror ("Eroare la read() de la client.\n");
