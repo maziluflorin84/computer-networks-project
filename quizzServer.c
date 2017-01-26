@@ -124,7 +124,7 @@ int main ()
       td=(struct thData*)malloc(sizeof(struct thData));	
       td->idThread=i++;
       td->cl=client;
-      sprintf(td->username,"%s%d","user",i);
+      strcpy(td->username,username);
       td->startTime=timeStart;
 
       pthread_create(&th[i], NULL, &treat, td);
@@ -133,6 +133,7 @@ int main ()
       
 };
 
+/* Functia ce afiseaza valorile din baza de date SQLite */
 int callback(void *NotUsed, int argc, char **argv, char **azColName) {
   NotUsed = 0;
   for (int i = 0; i < argc; i++)
@@ -143,6 +144,7 @@ int callback(void *NotUsed, int argc, char **argv, char **azColName) {
   return 0;
 }
 
+/* Functia ce ruleaza interogarea sql */
 void *getQuestions()
 {
   sqlite3 *db;
