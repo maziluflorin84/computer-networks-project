@@ -25,6 +25,10 @@ typedef struct thData{
   int startTime;     //imtpul curent inainte de startul intrebarilor
 }thData;
 
+int callback(void *, int, char **, char **);
+
+void *getQuestions();
+
 /* functia executata de thread-ul pentru countdown timer */
 void *countdown(void *);
 
@@ -43,10 +47,6 @@ int main ()
   pthread_t th[100];    //Identificatorii thread-urilor care se vor crea pentru clienti
   pthread_t countdownThread;
   int i=0;
-  sqlite3 *db;
-  sqlite3_stmt *res;
-    
-  int rc = sqlite3_open("questions.db", &db);
 
   /* Este creat thread-ul pentru countdown-ul de la inceperea quizz-ului*/
   pthread_create(&countdownThread, NULL, countdown, NULL);
@@ -108,15 +108,13 @@ int main ()
 	}
 
 
-
       char username[20]; //username-ul
       /* Este citit username-ul*/
       if (read (client, username, sizeof(username)) <= 0)
 	{
 	  perror ("Eroare la read() de la client a username-ului.\n");		
 	}
-      
-      
+            
 	  	
       /* s-a realizat conexiunea, se astepta mesajul */
       int idThread; //id-ul threadului
@@ -133,6 +131,40 @@ int main ()
 				
     }//while
       
+};
+
+int callback(void *NotUsed, int argc, char **argv, char **azColName) {
+  NotUsed = 0;
+  for (int i = 0; i < argc; i++)
+    {
+      printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+    }
+  printf("\n");    
+  return 0;
+}
+
+void *getQuestions()
+{
+  sqlite3 *db;
+  char *err_msg = 0;
+    
+  int rc = sqlite3_open("questions.db", &db);
+  if(rc != SQLITE_OK) {
+    fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
+    sqlite3_close(db);
+  }
+
+  char *sql = "SELECT * FROM questions";
+        
+  rc = sqlite3_exec(db, sql, callback, 0, &err_msg);
+  if (rc != SQLITE_OK )
+    { 
+      fprintf(stderr, "Failed to select data\n");
+      fprintf(stderr, "SQL error: %s\n", err_msg);
+      sqlite3_free(err_msg);
+      sqlite3_close(db);
+    }
+  sqlite3_close(db);
 };
 
 void *countdown(void *arg)
@@ -157,6 +189,8 @@ void *countdown(void *arg)
       usleep(100000);
     }
   printf("\n");
+
+  getQuestions();
 };
 
 static void *treat(void * arg)
@@ -189,13 +223,6 @@ void raspunde(void *arg)
       printf("[Thread %d] ",tdL.idThread);
       perror ("[Thread]Eroare la write() catre client a pozitiei countdown-ului.\n");
     }
-
-  /* returnam username-ul clientului 
-  if (write (tdL.cl, tdL.username, sizeof(tdL.username)) <= 0)
-    {
-      printf("[Thread %d] ",tdL.idThread);
-      perror ("[Thread]Eroare la write() catre client a username-ului.\n");
-      }*/
   
   if (read (tdL.cl, &nr, sizeof(int)) <= 0)
     {
